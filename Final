@@ -1,0 +1,203 @@
+from __future__ import print_function
+from imutils.video import VideoStream
+import imutils
+import time
+import cv2
+import os
+import RPi.GPIO as GPIO          
+from time import sleep
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+
+TRIG = 21
+ECHO = 5
+
+GPIO.setup(TRIG,GPIO.OUT)
+GPIO.output(TRIG, 0)
+
+
+GPIO.setup(ECHO,GPIO.IN)
+
+
+
+
+distance = 6
+in1 = 13
+in2 = 26
+
+in3 = 12
+in4 =16
+
+en = 6
+en2 =20
+
+temp1=1
+
+x =''
+
+#GPIO.setmode(GPIO.BCM) currently GPIO.BOARD
+
+GPIO.setup(in1,GPIO.OUT)
+GPIO.setup(in2,GPIO.OUT)
+
+
+GPIO.setup(en,GPIO.OUT)
+
+GPIO.output(in1,GPIO.LOW)
+GPIO.output(in2,GPIO.LOW)
+
+
+GPIO.setup(in3,GPIO.OUT)
+GPIO.setup(in4,GPIO.OUT)
+
+GPIO.setup(en2, GPIO.OUT)
+
+GPIO.output(in3,GPIO.LOW)
+GPIO.output(in4,GPIO.LOW)
+
+p=GPIO.PWM(en,1000)
+p2=GPIO.PWM(en2,1000)
+
+
+p.start(25)
+p2.start(25)
+
+
+def Left():
+        GPIO.output(in1, GPIO.LOW)
+        GPIO.output(in2, GPIO.LOW)
+        GPIO.output(in3, GPIO.HIGH)
+        GPIO.output(in4, GPIO.LOW)
+        print("moving left")
+def Right():
+        GPIO.output(in1, GPIO.HIGH)
+        GPIO.output(in2, GPIO.LOW)
+        GPIO.output(in3, GPIO.LOW)
+        GPIO.output(in4, GPIO.LOW)
+        print("moving right")
+def Forward():
+        GPIO.output(in1, GPIO.HIGH)
+        GPIO.output(in2, GPIO.LOW)
+        GPIO.output(in3, GPIO.HIGH)
+        GPIO.output(in4, GPIO.LOW)
+        print("moving forward")
+def Back():
+        GPIO.output(in1, GPIO.LOW)
+        GPIO.output(in2, GPIO.HIGH)
+        GPIO.output(in3, GPIO.LOW)
+        GPIO.output(in4, GPIO.HIGH)
+        print("moving backward")
+def Stop():
+        GPIO.output(in1, GPIO.LOW)
+        GPIO.output(in2, GPIO.LOW)
+        GPIO.output(in3, GPIO.LOW)
+        GPIO.output(in4, GPIO.LOW)
+        print("not moving")
+def Sensor(GPIO_TRIGGER,GPIO_ECHO):
+        start=0
+        stop=0
+
+        GPIO.setup(GPIO_TRIGGER,GPIO.OUT)
+        GPIO.setup(GPIO_ECHO,GPIO.IN)
+
+        GPIO.output(GPIO_TRIGGER,0)
+        time.sleep(0.01)
+
+        GPIO.output(GPIO_TRIGGER,1)
+        time.sleep(0.00001)
+        GPIO.output(GPIO_TRIGGER,0)
+        begin =time.time()
+        while GPIO.input(GPIO_ECHO)==0 and time.time()<begin+0.05:
+                start = time.time()     
+        while GPIO.input(GPIO_ECHO)==1 and time.time()<begin+0.1:
+                stop = time.time()
+      
+        elapsed = stop-start
+      
+        distance = elapsed * 34000
+
+        distance = distance /2 
+        
+        print ("Distance: %.1f"% distance,"cm")
+        return distance
+
+# print object coordinates
+def mapObjectPosition (x, y):
+        print ("[INFO] Object Center coordenates at X0 = {0} and Y0 =  {1}".format(x, y))
+
+# initialize the video stream and allow the camera sensor to warmup
+print("[INFO] waiting for camera to warmup...")
+vs = VideoStream(0).start()
+time.sleep(2.0)
+
+# define the lower and upper boundaries of the object
+# to be tracked in the HSV color space
+colorLower = (168, 100, 100)
+colorUpper = (188, 255, 255)
+
+# loop over the frames from the video stream
+while True:
+        # grab the next frame from the video stream, Invert 180o, resize the
+    # frame, and convert it to the HSV color space
+    frame = vs.read()
+    frame = imutils.resize(frame, width=500)
+    frame = imutils.rotate(frame, angle=180)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # construct a mask for the object color, then perform
+    # a series of dilations and erosions to remove any small
+    # blobs left in the mask
+    mask = cv2.inRange(hsv, colorLower, colorUpper)
+    mask = cv2.erode(mask, None, iterations=2)
+    mask = cv2.dilate(mask, None, iterations=2)
+
+    # find contours in the mask and initialize the current
+    # (x, y) center of the object
+    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+    center = None
+
+    # only proceed if at least one contour was found
+    if len(cnts) > 0:
+                # find the largest contour in the mask, then use
+                # it to compute the minimum enclosing circle and
+        # centroid
+        c = max(cnts, key=cv2.contourArea)
+        ((x, y), radius) = cv2.minEnclosingCircle(c)
+        M = cv2.moments(c)
+        xcenter = (int(M["m10"] / M["m00"]))
+        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                
+        # only proceed if the radius meets a minimum size
+        if radius > 10:
+                        # draw the circle and centroid on the frame,
+            # then update the list of tracked points
+            cv2.circle(frame, (int(x), int(y)), int(radius),
+                (0, 255, 255), 2)
+            cv2.circle(frame, center, 5, (0, 0, 255), -1)
+            
+            # position Servo at center of circle
+            mapObjectPosition(int(x), int(y))
+        if xcenter < 166:
+                Left()
+        elif xcenter > 332:
+                Right()
+        elif xcenter >=166 and xcenter <=332 and Sensor(TRIG, ECHO) >= 10: 
+                Forward()
+                
+        elif xcenter >=166 and xcenter <=332 and Sensor(TRIG, ECHO) < 10:
+                Stop()
+                
+    # show the frame to our screen
+    cv2.imshow("Frame", frame)
+    
+    # if [ESC] key is pressed, stop the loop
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord("q"):
+        break
+# do a bit of cleanup
+print("\n [INFO] Exiting Program and cleanup stuff \n")
+GPIO.cleanup()
+cv2.destroyAllWindows()
+vs.stop()
