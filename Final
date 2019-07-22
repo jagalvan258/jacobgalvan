@@ -59,28 +59,31 @@ p=GPIO.PWM(en,1000)
 p2=GPIO.PWM(en2,1000)
 
 
-p.start(25)
-p2.start(25)
+p.start(40)
+p2.start(40)
 
 
-def Left():
+def Right():
         GPIO.output(in1, GPIO.LOW)
         GPIO.output(in2, GPIO.LOW)
         GPIO.output(in3, GPIO.HIGH)
         GPIO.output(in4, GPIO.LOW)
         print("moving left")
-def Right():
+        time.sleep(0.001)
+def Left():
         GPIO.output(in1, GPIO.HIGH)
         GPIO.output(in2, GPIO.LOW)
         GPIO.output(in3, GPIO.LOW)
         GPIO.output(in4, GPIO.LOW)
         print("moving right")
+        time.sleep(0.001)
 def Forward():
         GPIO.output(in1, GPIO.HIGH)
         GPIO.output(in2, GPIO.LOW)
         GPIO.output(in3, GPIO.HIGH)
         GPIO.output(in4, GPIO.LOW)
         print("moving forward")
+        time.sleep(0.001)
 def Back():
         GPIO.output(in1, GPIO.LOW)
         GPIO.output(in2, GPIO.HIGH)
@@ -93,6 +96,7 @@ def Stop():
         GPIO.output(in3, GPIO.LOW)
         GPIO.output(in4, GPIO.LOW)
         print("not moving")
+        time.sleep(0.001)
 def Sensor(GPIO_TRIGGER,GPIO_ECHO):
         start=0
         stop=0
@@ -183,21 +187,28 @@ while True:
                 Left()
         elif xcenter > 332:
                 Right()
-        elif xcenter >=166 and xcenter <=332 and Sensor(TRIG, ECHO) >= 10: 
+        elif xcenter >=166 and xcenter <=332 and Sensor(TRIG, ECHO) >= 20: 
                 Forward()
                 
-        elif xcenter >=166 and xcenter <=332 and Sensor(TRIG, ECHO) < 10:
+        elif xcenter >=166 and xcenter <=332 and Sensor(TRIG, ECHO) < 20:
+                Stop()
+        else:
                 Stop()
                 
     # show the frame to our screen
-    cv2.imshow("Frame", frame)
-    
+    #cv2.imshow("Frame", frame)
+    #img =cv2.imread('path_to_image')
+    #plt.imshow(img, cmap = 'gray', interpolation = 'bicubic')
+    #plt.xticks([]),pltyticks([])
+    #plt.show
     # if [ESC] key is pressed, stop the loop
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord("q"):
-        break
+    #key = cv2.waitKey(1) & 0xFF
+    #if key == ord("q"):
+     #   break
 # do a bit of cleanup
 print("\n [INFO] Exiting Program and cleanup stuff \n")
 GPIO.cleanup()
 cv2.destroyAllWindows()
 vs.stop()
+Final.py
+Displaying Final.py.
